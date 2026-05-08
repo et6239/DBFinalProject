@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}snickr — team messaging{% endblock %}
+{% block content %}
+<div style="text-align:center;padding:4rem 1rem 3rem;">
+  <h1 style="font-size:2.5rem;letter-spacing:-1px;margin-bottom:.75rem;">Welcome to snickr</h1>
+  <p style="font-size:1.1rem;color:#555;max-width:480px;margin:0 auto 2rem;">
+    A simple, fast workspace for your team. Create channels, send messages, and search everything in one place.
+  </p>
+  <div style="display:flex;justify-content:center;gap:1rem;">
+    <a href="{% url 'register' %}" class="btn" style="margin-top:0;font-size:1rem;padding:.75rem 2rem;">Get started</a>
+    <a href="{% url 'login' %}" class="btn btn-secondary" style="margin-top:0;font-size:1rem;padding:.75rem 2rem;">Log in</a>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin-top:1rem;">
+  <div class="card" style="text-align:center;padding:1.75rem;">
+    <div style="font-size:2rem;margin-bottom:.75rem;">💬</div>
+    <h2 style="margin-bottom:.5rem;">Channels</h2>
+    <p class="muted">Public, private, or direct — keep every conversation in its place.</p>
+  </div>
+  <div class="card" style="text-align:center;padding:1.75rem;">
+    <div style="font-size:2rem;margin-bottom:.75rem;">🏢</div>
+    <h2 style="margin-bottom:.5rem;">Workspaces</h2>
+    <p class="muted">Organize your team into workspaces with member roles and invitations.</p>
+  </div>
+  <div class="card" style="text-align:center;padding:1.75rem;">
+    <div style="font-size:2rem;margin-bottom:.75rem;">🔍</div>
+    <h2 style="margin-bottom:.5rem;">Search</h2>
+    <p class="muted">Find any message across every channel you have access to, instantly.</p>
+  </div>
+</div>
+{% endblock %}

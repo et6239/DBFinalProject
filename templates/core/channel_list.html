@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Channels — {{ workspace.name }} — snickr{% endblock %}
+{% block breadcrumb %}
+<div class="breadcrumb">
+  <a href="{% url 'dashboard' %}">Home</a>
+  <span class="sep">›</span>
+  <a href="{% url 'workspace' workspace.workspace_id %}">{{ workspace.name }}</a>
+  <span class="sep">›</span>
+  <span>Channels</span>
+</div>
+{% endblock %}
+{% block content %}
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+  <div>
+    <h1>{{ workspace.name }}</h1>
+    <p class="muted" style="margin-top:.2rem;">Channels</p>
+  </div>
+  <div style="display:flex;gap:.75rem;">
+    <a href="{% url 'channel_new' workspace.workspace_id %}" class="btn" style="margin-top:0;">+ New channel</a>
+    <a href="{% url 'workspace' workspace.workspace_id %}" class="btn btn-secondary" style="margin-top:0;">Members</a>
+    <a href="{% url 'dashboard' %}" class="btn btn-secondary" style="margin-top:0;">← Home</a>
+  </div>
+</div>
+
+{% if pending_invites %}
+<div class="card" style="margin-bottom:1rem;border-left:3px solid #4a154b;">
+  <h2 style="margin-bottom:.75rem;">Channel invitations</h2>
+  {% for inv in pending_invites %}
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;border-bottom:1px solid #f0f0f0;">
+      <span>Invited to <strong>#{{ inv.channel.name }}</strong> by {{ inv.invited_by.username }}</span>
+      <div style="display:flex;gap:.5rem;">
+        <form method="post" action="{% url 'channel_invitation_accept' inv.invitation_id %}">
+          {% csrf_token %}<button type="submit" style="margin-top:0;padding:.3rem .8rem;font-size:.85rem;">Accept</button>
+        </form>
+        <form method="post" action="{% url 'channel_invitation_decline' inv.invitation_id %}">
+          {% csrf_token %}<button type="submit" style="margin-top:0;padding:.3rem .8rem;font-size:.85rem;background:#e8e8e8;color:#333;">Decline</button>
+        </form>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card">
+  {% if channels %}
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="text-align:left;border-bottom:2px solid #eee;">
+          <th style="padding:.5rem .75rem;">Channel</th>
+          <th style="padding:.5rem .75rem;">Type</th>
+          <th style="padding:.5rem .75rem;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ch in channels %}
+          <tr style="border-bottom:1px solid #f0f0f0;">
+            <td style="padding:.55rem .75rem;">
+              {% if ch.channel_id in member_ids %}
+                <a href="{% url 'channel' ch.channel_id %}" style="font-weight:600;color:#4a154b;text-decoration:none;">#{{ ch.name }}</a>
+              {% else %}
+                <span style="color:#666;">#{{ ch.name }}</span>
+              {% endif %}
+            </td>
+            <td style="padding:.55rem .75rem;">
+              <span style="font-size:.8rem;background:#e8e8e8;color:#555;border-radius:4px;padding:2px 8px;">{{ ch.channel_type }}</span>
+            </td>
+            <td style="padding:.55rem .75rem;">
+              {% if ch.channel_id in member_ids %}
+                <a href="{% url 'channel' ch.channel_id %}" style="font-size:.85rem;">Open</a>
+              {% elif ch.channel_type == 'public' %}
+                <form method="post" action="{% url 'channel_join' ch.channel_id %}" style="display:inline;">
+                  {% csrf_token %}<button type="submit" style="margin-top:0;padding:.25rem .7rem;font-size:.85rem;">Join</button>
+                </form>
+              {% else %}
+                <span class="muted" style="font-size:.85rem;">Invite only</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">No channels yet. Create one!</p>
+  {% endif %}
+</div>
+{% endblock %}

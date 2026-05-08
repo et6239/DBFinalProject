@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+{% block title %}#{{ channel.name }} — snickr{% endblock %}
+{% block breadcrumb %}
+<div class="breadcrumb">
+  <a href="{% url 'dashboard' %}">Home</a>
+  <span class="sep">›</span>
+  <a href="{% url 'workspace' channel.workspace.workspace_id %}">{{ channel.workspace.name }}</a>
+  <span class="sep">›</span>
+  <a href="{% url 'channel_list' channel.workspace.workspace_id %}">Channels</a>
+  <span class="sep">›</span>
+  <span>#{{ channel.name }}</span>
+</div>
+{% endblock %}
+{% block content %}
+
+<div style="display:flex;gap:1.25rem;align-items:flex-start;">
+
+  <!-- Main column -->
+  <div style="flex:1;min-width:0;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+      <div>
+        <h1 style="margin-bottom:.1rem;">#{{ channel.name }}</h1>
+        <span class="muted">{{ channel.channel_type }}</span>
+      </div>
+      <div style="display:flex;gap:.75rem;">
+        {% if channel.channel_type == 'private' and channel.created_by == user %}
+          <a href="{% url 'channel_invite' channel.channel_id %}" class="btn" style="margin-top:0;">Invite</a>
+        {% endif %}
+        {% if channel.channel_type == 'public' and not is_member %}
+          <form method="post" action="{% url 'channel_join' channel.channel_id %}">
+            {% csrf_token %}<button type="submit" style="margin-top:0;">Join channel</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Message list -->
+    <div class="card" style="margin-bottom:1rem;min-height:260px;" id="message-list">
+      <p class="muted" id="msg-loading">Loading messages…</p>
+    </div>
+
+    {% if is_member %}
+    <div class="card">
+      <div style="display:flex;gap:.75rem;align-items:center;">
+        <input type="text" id="msg-input" placeholder="Message #{{ channel.name }}" style="flex:1;margin:0;" autocomplete="off">
+        <button id="msg-send" style="margin-top:0;">Send</button>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Members sidebar -->
+  <div style="width:200px;flex-shrink:0;">
+    <div class="card" style="padding:1.25rem;">
+      <h2 style="font-size:.9rem;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:.75rem;">
+        Members ({{ members|length }})
+      </h2>
+      {% for m in members %}
+        <div style="display:flex;align-items:center;gap:.5rem;padding:.3rem 0;border-bottom:1px solid #f5f5f5;">
+          <div style="width:28px;height:28px;border-radius:50%;background:#4a154b;color:#fff;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;flex-shrink:0;">
+            {{ m.user.nickname|slice:":1"|upper }}
+          </div>
+          <div style="min-width:0;">
+            <div style="font-size:.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ m.user.nickname }}</div>
+            <div class="muted" style="font-size:.75rem;">@{{ m.user.username }}</div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+
+<script>
+const MESSAGES_URL = "{% url 'channel_messages_json' channel.channel_id %}";
+const POST_URL     = "{% url 'message_post' channel.channel_id %}";
+const REACT_BASE   = "/messages/";
+const IS_MEMBER    = {% if is_member %}true{% else %}false{% endif %};
+const EMOJIS       = {{ emojis|safe }};
+
+let lastId = 0;
+
+function getCsrf() {
+  const match = document.cookie.match(/csrftoken=([^;]+)/);
+  return match ? match[1] : '';
+}
+
+function renderReactions(msg) {
+  const counts = msg.reactions || {};
+  const mine   = msg.my_reactions || [];
+
+  // Only render emojis that have at least one reaction
+  const used = EMOJIS.filter(e => (counts[e] || 0) > 0);
+  const pills = used.map(e => {
+    const active = mine.includes(e);
+    return `<button class="reaction-btn${active ? ' reacted' : ''}"
+      data-emoji="${e}" data-mid="${msg.id}"
+      title="${e}"
+      style="margin:0 2px;padding:2px 8px;border-radius:12px;
+             border:1px solid ${active ? '#4a154b' : '#ddd'};
+             background:${active ? '#f0e8f0' : '#fafafa'};
+             cursor:pointer;font-size:.85rem;line-height:1.4;"
+      >${e} ${counts[e]}</button>`;
+  }).join('');
+
+  const addBtn = `<button class="reaction-add" data-mid="${msg.id}"
+    style="margin:0 2px;padding:2px 7px;border-radius:12px;border:1px solid #ddd;
+           background:#fafafa;cursor:pointer;font-size:.8rem;color:#888;line-height:1.4;"
+    >+</button>`;
+
+  return pills + addBtn;
+}
+
+// --- Emoji picker popup ---
+const picker = document.createElement('div');
+picker.id = 'emoji-picker';
+picker.style.cssText = `
+  display:none; position:fixed; z-index:999;
+  background:#fff; border:1px solid #ddd; border-radius:8px;
+  box-shadow:0 4px 12px rgba(0,0,0,.15); padding:6px 8px; gap:4px;
+`;
+picker.innerHTML = EMOJIS.map(e =>
+  `<button data-pick="${e}"
+    style="font-size:1.2rem;background:none;border:none;cursor:pointer;
+           padding:4px;border-radius:6px;margin:0;line-height:1;"
+    title="${e}">${e}</button>`
+).join('');
+document.body.appendChild(picker);
+
+let pickerMid = null;
+
+function showPicker(btn) {
+  pickerMid = btn.dataset.mid;
+  picker.style.display = 'flex';
+  const r = btn.getBoundingClientRect();
+  picker.style.top  = `${r.bottom + 4}px`;
+  picker.style.left = `${r.left}px`;
+}
+
+function hidePicker() {
+  picker.style.display = 'none';
+  pickerMid = null;
+}
+
+document.addEventListener('click', e => {
+  if (!picker.contains(e.target) && !e.target.closest('.reaction-add')) hidePicker();
+});
+
+function renderMessage(msg) {
+  const div = document.createElement('div');
+  div.className = 'msg-row';
+  div.dataset.id = msg.id;
+  div.style.cssText = 'padding:.5rem .25rem;border-bottom:1px solid #f5f5f5;';
+  div.innerHTML = `
+    <span style="font-weight:600;color:#4a154b;">${escHtml(msg.nickname)}</span>
+    <span style="font-size:.78rem;color:#aaa;margin-left:.5rem;">${escHtml(msg.posted_at)}</span>
+    <p style="margin:.2rem 0 .4rem;">${escHtml(msg.body)}</p>
+    ${IS_MEMBER ? `<div class="reaction-row" data-mid="${msg.id}">${renderReactions(msg)}</div>` : ''}
+  `;
+  return div;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function updateReactionRow(mid, reactionData) {
+  const row = document.querySelector(`.reaction-row[data-mid="${mid}"]`);
+  if (!row) return;
+  // Build my_reactions from current active state + update
+  const myReactions = [...row.querySelectorAll('.reaction-btn.reacted')].map(b => b.dataset.emoji);
+  const fakeMsg = { id: mid, reactions: reactionData.counts, my_reactions: myReactions };
+  row.innerHTML = renderReactions(fakeMsg);
+}
+
+const list = document.getElementById('message-list');
+
+async function fetchMessages(after) {
+  const url = after ? `${MESSAGES_URL}?after=${after}` : MESSAGES_URL;
+  const res  = await fetch(url, {credentials: 'same-origin'});
+  if (!res.ok) return [];
+  return res.json();
+}
+
+async function loadInitial() {
+  const msgs = await fetchMessages(null);
+  list.innerHTML = '';
+  if (!msgs.length) {
+    list.innerHTML = '<p class="muted">No messages yet. Say something!</p>';
+    return;
+  }
+  msgs.forEach(m => {
+    list.appendChild(renderMessage(m));
+    if (m.id > lastId) lastId = m.id;
+  });
+  list.lastElementChild?.scrollIntoView({block:'end'});
+}
+
+async function poll() {
+  if (!lastId) return;
+  const msgs = await fetchMessages(lastId);
+  msgs.forEach(m => {
+    if (!document.querySelector(`.msg-row[data-id="${m.id}"]`)) {
+      list.appendChild(renderMessage(m));
+      if (m.id > lastId) lastId = m.id;
+    }
+  });
+  if (msgs.length) list.lastElementChild?.scrollIntoView({block:'end'});
+}
+
+async function postReaction(mid, emoji) {
+  const res = await fetch(`${REACT_BASE}${mid}/react/`, {
+    method:      'POST',
+    credentials: 'same-origin',
+    headers:     {'X-CSRFToken': getCsrf(), 'Content-Type': 'application/x-www-form-urlencoded'},
+    body:        `emoji=${encodeURIComponent(emoji)}`,
+  });
+  if (!res.ok) return;
+  const data = await res.json();
+  const row = list.querySelector(`.reaction-row[data-mid="${mid}"]`);
+  if (!row) return;
+  const myReactions = [...row.querySelectorAll('.reaction-btn.reacted')]
+    .map(b => b.dataset.emoji)
+    .filter(e => e !== emoji);
+  if (data.reacted) myReactions.push(emoji);
+  row.innerHTML = renderReactions({id: mid, reactions: data.counts, my_reactions: myReactions});
+}
+
+// Reaction clicks (event delegation)
+list.addEventListener('click', e => {
+  const addBtn = e.target.closest('.reaction-add');
+  if (addBtn) { e.stopPropagation(); showPicker(addBtn); return; }
+  const btn = e.target.closest('.reaction-btn');
+  if (btn) postReaction(btn.dataset.mid, btn.dataset.emoji);
+});
+
+// Picker emoji selection
+picker.addEventListener('click', e => {
+  const btn = e.target.closest('[data-pick]');
+  if (!btn || !pickerMid) return;
+  const mid = pickerMid;
+  hidePicker();
+  postReaction(mid, btn.dataset.pick);
+});
+
+// Send message
+{% if is_member %}
+const input  = document.getElementById('msg-input');
+const sendBtn = document.getElementById('msg-send');
+
+async function sendMessage() {
+  const body = input.value.trim();
+  if (!body) return;
+  input.value = '';
+  input.focus();
+  const res = await fetch(POST_URL, {
+    method:      'POST',
+    credentials: 'same-origin',
+    headers:     {'X-CSRFToken': getCsrf(), 'Content-Type': 'application/x-www-form-urlencoded'},
+    body:        `body=${encodeURIComponent(body)}`,
+  });
+  if (!res.ok) return;
+  const msg = await res.json();
+  if (!document.querySelector(`.msg-row[data-id="${msg.id}"]`)) {
+    // Remove "no messages" placeholder if present
+    const placeholder = list.querySelector('p.muted');
+    if (placeholder) placeholder.remove();
+    list.appendChild(renderMessage(msg));
+    if (msg.id > lastId) lastId = msg.id;
+    list.lastElementChild?.scrollIntoView({block:'end'});
+  }
+}
+
+sendBtn.addEventListener('click', sendMessage);
+input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+{% endif %}
+
+// Boot
+loadInitial();
+setInterval(poll, 3000);
+</script>
+{% endblock %}

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}New channel — {{ workspace.name }} — snickr{% endblock %}
+{% block breadcrumb %}
+<div class="breadcrumb">
+  <a href="{% url 'dashboard' %}">Home</a>
+  <span class="sep">›</span>
+  <a href="{% url 'workspace' workspace.workspace_id %}">{{ workspace.name }}</a>
+  <span class="sep">›</span>
+  <a href="{% url 'channel_list' workspace.workspace_id %}">Channels</a>
+  <span class="sep">›</span>
+  <span>New channel</span>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card" style="max-width:480px;">
+  <h1>New channel</h1>
+  {% if error %}<div class="alert-error">{{ error }}</div>{% endif %}
+  <form method="post" id="channel-form">
+    {% csrf_token %}
+
+    <label>Type</label>
+    <div style="display:flex;gap:1.5rem;margin-top:.4rem;">
+      <label style="font-weight:normal;display:flex;align-items:center;gap:.4rem;">
+        <input type="radio" name="channel_type" value="public" checked onchange="setType('public')"> Public
+      </label>
+      <label style="font-weight:normal;display:flex;align-items:center;gap:.4rem;">
+        <input type="radio" name="channel_type" value="private" onchange="setType('private')"> Private
+      </label>
+      <label style="font-weight:normal;display:flex;align-items:center;gap:.4rem;">
+        <input type="radio" name="channel_type" value="direct" onchange="setType('direct')"> Direct message
+      </label>
+    </div>
+
+    <div id="name-field">
+      <label for="name">Channel name</label>
+      <input type="text" id="name" name="name" placeholder="e.g. general" autofocus>
+    </div>
+
+    <div id="dm-field" style="display:none;position:relative;">
+      <label for="dm_input">Send DM to</label>
+      <input type="text" id="dm_input" placeholder="Search by username or nickname…" autocomplete="off">
+      <input type="hidden" id="dm_username" name="dm_username">
+      <ul id="dm-dropdown" style="
+        display:none; position:absolute; top:100%; left:0; right:0; z-index:50;
+        background:#fff; border:1px solid #ccc; border-radius:0 0 5px 5px;
+        list-style:none; margin:0; padding:0; box-shadow:0 4px 8px rgba(0,0,0,.1);
+      "></ul>
+    </div>
+
+    <button type="submit">Create</button>
+  </form>
+  <a href="{% url 'channel_list' workspace.workspace_id %}" class="btn btn-secondary" style="margin-top:.75rem;">← Back</a>
+</div>
+
+<script>
+const SEARCH_URL = "{% url 'workspace_members_search' workspace.workspace_id %}";
+
+function setType(type) {
+  document.getElementById('name-field').style.display = type === 'direct' ? 'none' : 'block';
+  document.getElementById('dm-field').style.display   = type === 'direct' ? 'block' : 'none';
+  document.getElementById('name').required = type !== 'direct';
+}
+
+const dmInput    = document.getElementById('dm_input');
+const dmHidden   = document.getElementById('dm_username');
+const dmDropdown = document.getElementById('dm-dropdown');
+
+let debounce;
+dmInput.addEventListener('input', () => {
+  dmHidden.value = '';
+  clearTimeout(debounce);
+  const q = dmInput.value.trim();
+  if (!q) { dmDropdown.style.display = 'none'; return; }
+  debounce = setTimeout(() => {
+    fetch(`${SEARCH_URL}?q=${encodeURIComponent(q)}`)
+      .then(r => r.json())
+      .then(data => {
+        dmDropdown.innerHTML = '';
+        if (!data.length) { dmDropdown.style.display = 'none'; return; }
+        data.forEach(u => {
+          const li = document.createElement('li');
+          li.textContent = `${u.username} (${u.nickname})`;
+          li.style.cssText = 'padding:.5rem .75rem;cursor:pointer;font-size:.9rem;';
+          li.addEventListener('mouseenter', () => li.style.background = '#f4f4f4');
+          li.addEventListener('mouseleave', () => li.style.background = '');
+          li.addEventListener('mousedown', e => {
+            e.preventDefault();
+            dmInput.value  = u.username;
+            dmHidden.value = u.username;
+            dmDropdown.style.display = 'none';
+          });
+          dmDropdown.appendChild(li);
+        });
+        dmDropdown.style.display = 'block';
+      });
+  }, 200);
+});
+
+dmInput.addEventListener('blur', () => {
+  setTimeout(() => dmDropdown.style.display = 'none', 150);
+});
+</script>
+{% endblock %}

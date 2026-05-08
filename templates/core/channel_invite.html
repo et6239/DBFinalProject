@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Invite — #{{ channel.name }} — snickr{% endblock %}
+{% block content %}
+<div class="card" style="max-width:480px;">
+  <h1>Invite to #{{ channel.name }}</h1>
+  {% if error %}<div class="alert-error">{{ error }}</div>{% endif %}
+  {% if success %}<div class="alert-success">{{ success }}</div>{% endif %}
+  <form method="post">
+    {% csrf_token %}
+    <label for="username">Username</label>
+    <input type="text" id="username" name="username" autofocus placeholder="username">
+    <button type="submit">Send invitation</button>
+  </form>
+  <a href="{% url 'channel' channel.channel_id %}" class="btn btn-secondary" style="margin-top:.75rem;">← Back to channel</a>
+</div>
+{% endblock %}

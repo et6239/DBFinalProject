@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Profile — snickr{% endblock %}
+{% block content %}
+<h1>Your profile</h1>
+
+<div class="card" style="max-width:480px;margin-bottom:1rem;">
+  <h2>Display name</h2>
+  {% if nickname_success %}<div class="alert-success">Nickname updated.</div>{% endif %}
+  <p><strong>Username:</strong> {{ user.username }}</p>
+  <p style="margin-top:.4rem;"><strong>Email:</strong> {{ user.email }}</p>
+  <form method="post">
+    {% csrf_token %}
+    <label for="nickname">Nickname</label>
+    <input type="text" id="nickname" name="nickname" value="{{ user.nickname }}" required>
+    <button type="submit">Save</button>
+  </form>
+</div>
+
+<div class="card" style="max-width:480px;">
+  <h2>Change password</h2>
+  {% if pw_error %}<div class="alert-error">{{ pw_error }}</div>{% endif %}
+  {% if pw_success %}<div class="alert-success">Password updated.</div>{% endif %}
+  <form method="post">
+    {% csrf_token %}
+    <label for="current_password">Current password</label>
+    <input type="password" id="current_password" name="current_password" required>
+    <label for="new_password">New password</label>
+    <input type="password" id="new_password" name="new_password" required>
+    <label for="confirm_password">Confirm new password</label>
+    <input type="password" id="confirm_password" name="confirm_password" required>
+    <button type="submit">Update password</button>
+  </form>
+</div>
+{% endblock %}

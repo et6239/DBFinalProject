@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Invite — {{ workspace.name }} — snickr{% endblock %}
+{% block content %}
+<div class="card" style="max-width:480px;">
+  <h1>Invite to {{ workspace.name }}</h1>
+  {% if error %}<div class="alert-error">{{ error }}</div>{% endif %}
+  {% if success %}<div class="alert-success">{{ success }}</div>{% endif %}
+  <form method="post">
+    {% csrf_token %}
+    <label for="email">Email address</label>
+    <input type="email" id="email" name="email" autofocus placeholder="user@example.com">
+    <p class="muted" style="margin-top:.5rem;font-size:.8rem;">
+      If they don't have an account yet, they'll be able to claim this invitation when they sign up.
+    </p>
+    <button type="submit">Send invitation</button>
+  </form>
+  <a href="{% url 'workspace' workspace.workspace_id %}" class="btn btn-secondary" style="margin-top:.75rem;">← Back to workspace</a>
+</div>
+{% endblock %}

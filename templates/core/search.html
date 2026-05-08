@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Search — snickr{% endblock %}
+{% block content %}
+
+<h1>Search messages</h1>
+
+<form method="get" action="{% url 'search' %}" style="margin:1.25rem 0;">
+  <div style="display:flex;gap:.75rem;">
+    <input type="text" name="q" value="{{ query }}" placeholder="Search messages…" style="flex:1;" autofocus>
+    <button type="submit" style="margin-top:0;">Search</button>
+  </div>
+</form>
+
+{% if query %}
+  <p class="muted" style="margin-bottom:1rem;">
+    {% if results %}
+      {{ results|length }} result{{ results|length|pluralize }} for "<strong>{{ query }}</strong>"
+    {% else %}
+      No results for "<strong>{{ query }}</strong>"
+    {% endif %}
+  </p>
+
+  {% if results %}
+    <div class="card">
+      {% for msg in results %}
+        <div style="padding:.75rem .25rem;border-bottom:1px solid #f0f0f0;">
+          <div style="display:flex;align-items:baseline;gap:.5rem;margin-bottom:.25rem;">
+            <a href="{% url 'channel' msg.channel.channel_id %}" style="font-weight:600;color:#4a154b;text-decoration:none;">
+              #{{ msg.channel.name }}
+            </a>
+            <span class="muted" style="font-size:.8rem;">{{ msg.channel.workspace.name }}</span>
+            <span class="muted" style="font-size:.78rem;margin-left:auto;">{{ msg.posted_at|date:"M j, Y H:i" }}</span>
+          </div>
+          <p><strong>{{ msg.posted_by.nickname }}:</strong> {{ msg.body }}</p>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endif %}
+
+{% endblock %}

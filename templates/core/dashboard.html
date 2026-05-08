@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Home — snickr{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+  <h1>Your workspaces</h1>
+  <div style="display:flex;gap:.75rem;align-items:center;">
+    {% if pending_count %}
+      <a href="{% url 'invitations' %}" class="btn btn-secondary" style="margin-top:0;">
+        Invitations <span style="background:#4a154b;color:#fff;border-radius:10px;padding:1px 7px;font-size:.8rem;margin-left:.3rem;">{{ pending_count }}</span>
+      </a>
+    {% else %}
+      <a href="{% url 'invitations' %}" class="btn btn-secondary" style="margin-top:0;">Invitations</a>
+    {% endif %}
+    <a href="{% url 'workspace_new' %}" class="btn" style="margin-top:0;">+ New workspace</a>
+  </div>
+</div>
+
+{% if memberships %}
+  <div style="display:grid;gap:1rem;">
+    {% for m in memberships %}
+      <a href="{% url 'workspace' m.workspace.workspace_id %}" style="text-decoration:none;">
+        <div class="card" style="padding:1.25rem 1.5rem;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <strong style="font-size:1.05rem;">{{ m.workspace.name }}</strong>
+            {% if m.workspace.description %}
+              <p class="muted" style="margin-top:.2rem;">{{ m.workspace.description }}</p>
+            {% endif %}
+          </div>
+          <span style="font-size:.8rem;background:{% if m.role == 'admin' %}#4a154b{% else %}#e8e8e8{% endif %};color:{% if m.role == 'admin' %}#fff{% else %}#555{% endif %};border-radius:4px;padding:2px 8px;">{{ m.role }}</span>
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card">
+    <p class="muted">You're not in any workspaces yet. Create one or wait for an invitation.</p>
+  </div>
+{% endif %}
+{% endblock %}
