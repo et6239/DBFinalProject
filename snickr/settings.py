@@ -44,9 +44,9 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'snickr',
         'USER': 'kali',
-        'PASSWORD': '',
-        'HOST': '',   # empty = Unix socket (matches psql peer auth)
-        'PORT': '',
+        'PASSWORD': 'kali',
+        'HOST': 'localhost',
+        'PORT': '5432',  # pg16 cluster
     }
 }
 
